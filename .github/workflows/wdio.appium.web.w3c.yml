@@ -1,50 +1,41 @@
-name: WebdriverIO - Appium Web - W3C on EMUSIM
+name: Mrhaxter
 
-on:
-  push:
-    # Only trigger if files in this path changed
-    paths:
-      - 'webdriverio/appium-web/examples/w3c/**'
-      - '.github/workflows/wdio.appium.web.w3c.yml'
-      # Don't run on Markdown changes
-      - '!**.md'
-    branches: [ master ]
-  pull_request:
-    # Only trigger if files in this path changed
-    paths:
-      - 'webdriverio/appium-web/examples/w3c/**'
-      - '.github/workflows/wdio.appium.web.w3c.yml'
-      # Don't run on Markdown changes
-      - '!**.md'
-    branches: [ master ]
-  schedule:
-    - cron:  '0 0 * * 0'
+on: workflow_dispatch
 
 jobs:
-  build:
-    runs-on: ubuntu-18.04
 
-    strategy:
-      matrix:
-        node-version: [14.x]
+  build:
+
+    runs-on: windows-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
 
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
+    - name: Download Ngrok
 
-      - name: Install dependencies
-        working-directory: ./webdriverio/appium-web/examples/w3c/
-        run: npm install
+      run: Invoke-WebRequest https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
 
-      - name: Run tests Android
-        working-directory: ./webdriverio/appium-web/examples/w3c/
-        env:
-          SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
-          SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
-        # Limit to 4 so we don't spin up to many devices
-        run: npm run test.saucelabs.us
+    - name: Extract Ngrok Archive
+
+      run: Expand-Archive ngrok.zip
+
+    - name: Auth
+
+      run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
+
+      env:
+
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+
+    - name: Enable TS
+
+      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name "fDenyTSConnections" -Value 0
+
+    - run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+    - run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+
+    - run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "Mrhaxter23" -Force)
+
+    - name: Create Tunnel
+
+      run: .\ngrok\ngrok.exe tcp 3389
